@@ -149,7 +149,7 @@ const RootQuery = new GraphQLObjectType({
         teachers: {
             type: new GraphQLList(new GraphQLNonNull(UserType)),
             resolve(parent, args, context){
-                return User.find({Role: TEACHER_ROLE});
+                return User.find({Role: config.TEACHER_ROLE});
             }
         },
 
