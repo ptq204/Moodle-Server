@@ -231,7 +231,7 @@ const Mutation = new GraphQLObjectType({
                 if(context.user.role === config.STUDENT_ROLE || context.user.role === config.TEACHER_ROLE){
                     id = context.user._id;
                 }
-                else if(context.user.role === ADMIN_SECRET){
+                else if(context.user.role === config.ADMIN_SECRET){
                     id = args.id;
                 }
                 return User.updateUser(id, args);
