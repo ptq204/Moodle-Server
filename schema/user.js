@@ -89,7 +89,7 @@ UserSchema.statics.updateUser = async (user, args) => {
     if(args.country) objUpdate.Country = args.country;    // consider this later
     if(args.description) objUpdate.Description = args.description;
 
-    if(user.role === STUDENT_ROLE){
+    if(user.role === STUDENT_ROLE || user.role === TEACHER_ROLE){
         return User.findByIdAndUpdate(user._id, objUpdate, {'new': true}, (err, obj) => {
             if(err){
                 console.log('Cannot update user!');
