@@ -21,7 +21,7 @@ const isTeacher = rule()(async (parent, args, ctx, info) => {
 const permissions = shield({
     RootQueryType: {
         students: and(isAuthenticated, isAdmin),
-        student: and(isAuthenticated, isAdmin),
+        user: and(isAuthenticated, isAdmin),
         teachers: and(isAuthenticated, isAdmin),
         viewParticipants: and(isAuthenticated, or(isAdmin, isStudent, isTeacher)),
         courses: and(isAuthenticated, or(isAdmin, isStudent, isTeacher)),

@@ -3,12 +3,12 @@ const jwt = require('jsonwebtoken');
 const bcryptjs = require('bcryptjs');
 const Schema = mongoose.Schema;
 const config = require('../config/config');
+const Grade = require('../schema/grade');
 const { STUDENT_ROLE, TEACHER_ROLE, ADMIN_SECRET } = require('../config/config');
 
 const UserSchema = new Schema({
     UserID: String,
-    FirstName: String,
-    SurName: String,
+    FullName: String,
     BirthDay: Date,
     Email: String,
     City: String,
@@ -74,43 +74,35 @@ UserSchema.statics.auth = async (email, password) => {
     }
 }
 
-UserSchema.statics.updateUser = async (user, args) => {
+UserSchema.statics.updateUser = async (id, args) => {
 
     //id, userid, firstname, surname, brithday, email, city, country, description 
 
     var objUpdate = {};
 
     if(args.userid) objUpdate.UserID = args.userid;
-    if(args.firstname) objUpdate.FirstName = args.firstname;
-    if(args.surname) objUpdate.SurName = args.surname;
+    if(args.fullname) objUpdate.FullName = args.fullname;
     if(args.brithday) objUpdate.BirthDay = args.brithday; // consider this later
     if(args.email) objUpdate.Email = args.email;
     if(args.city) objUpdate.City = args.city;             // consider this later
     if(args.country) objUpdate.Country = args.country;    // consider this later
     if(args.description) objUpdate.Description = args.description;
 
-    if(user.role === STUDENT_ROLE || user.role === TEACHER_ROLE){
-        return User.findByIdAndUpdate(user._id, objUpdate, {'new': true}, (err, obj) => {
-            if(err){
-                console.log('Cannot update user!');
-                console.log(err);
-                return null;
-            }
-            console.log('Updated user info successfully!');
+    if(args.fullname){
+        const grade = Grade.updateMany({UserID: id}, {StudentName: args.fullname}, (err, obj) => {
             return obj;
         });
     }
-    else if(user.role === ADMIN_SECRET){
-        return User.findOneAndUpdate({Email: args.email}, objUpdate, {'new': true}, (err, obj) => {
-            if(err){
-                console.log('Cannot update user!');
-                console.log(err);
-                return null;
-            }
-            console.log('Updated user info successfully!');
-            return obj;
-        });
-    }
+    
+    return User.findByIdAndUpdate(id, objUpdate, {'new': true}, (err, obj) => {
+        if(err){
+            console.log('Cannot update user!');
+            console.log(err);
+            return null;
+        }
+        console.log('Updated user info successfully!');
+        return obj;
+    });
 }
 
 UserSchema.statics.removeUser = async (ID) => {

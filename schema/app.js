@@ -37,8 +37,7 @@ const UserType = new GraphQLObjectType({
         id: {type: GraphQLID},
         UserID: {type: GraphQLString}, // MSSV/MSGV
         Class: {type: GraphQLString},
-        FirstName: {type: GraphQLString},
-        SurName: {type: GraphQLString},
+        FullName: {type: GraphQLString},
         BirthDay: {type: GraphQLDate},
         Email: {type: GraphQLString},
         City: {type: GraphQLString},
@@ -218,9 +217,9 @@ const Mutation = new GraphQLObjectType({
         updateUser: {
             type: UserType,
             args: {
+                id: {type: GraphQLID},
                 userid: {type: GraphQLString},
-                firstname: {type: GraphQLString}, 
-                surname: {type: GraphQLString}, 
+                fullname: {type: GraphQLString}, 
                 birthday: {type: GraphQLDate}, 
                 email: {type: GraphQLString}, 
                 city: {type: GraphQLString}, 
@@ -228,7 +227,24 @@ const Mutation = new GraphQLObjectType({
                 description: {type: GraphQLString}
             },
             resolve(parent, args, context){
-                return User.updateUser(context.user, args);
+                var id = '';
+                if(context.user.role === config.STUDENT_ROLE || context.user.role === config.TEACHER_ROLE){
+                    id = context.user._id;
+                }
+                else if(context.user.role === ADMIN_SECRET){
+                    id = args.id;
+                }
+                return User.updateUser(id, args);
+            }
+        },
+
+        removeUser: {
+            type: UserType,
+            args: {
+                id: {type: GraphQLID}
+            },
+            resolve(parent, args, context){
+                return User.removeUser(args.id);
             }
         },
 
@@ -243,7 +259,7 @@ const Mutation = new GraphQLObjectType({
                 if(context.user.role === config.STUDENT_ROLE){
                     const user = User.findById(context.user._id, (err, obj) => {
                         if(err) return null;
-                        Grade.createGrade(args.courseid, context.user._id, obj.FirstName + ' ' + obj.SurName, obj.UserID);
+                        Grade.createGrade(args.courseid, context.user._id, obj.FullName, obj.UserID);
                     });
                 }
                 return Course.findByIdAndUpdate(
@@ -285,7 +301,7 @@ const Mutation = new GraphQLObjectType({
                             async (err2, user2) => {
                                 if(err2) throw err2;
                                 if(user2.role === STUDENT_ROLE){
-                                    await Grade.createGrade(args.courseid, args.userid, obj.FirstName + ' ' + obj.SurName);
+                                    await Grade.createGrade(args.courseid, args.userid, obj.FullName);
                                     return user2;
                                 }
                                 return user2;
