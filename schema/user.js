@@ -101,7 +101,7 @@ UserSchema.statics.updateUser = async (user, args) => {
         });
     }
     else if(user.role === ADMIN_SECRET){
-        return User.findOneAndUpdate({UserID: args.userid}, objUpdate, {'new': true}, (err, obj) => {
+        return User.findOneAndUpdate({Email: args.email}, objUpdate, {'new': true}, (err, obj) => {
             if(err){
                 console.log('Cannot update user!');
                 console.log(err);
