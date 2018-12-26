@@ -136,7 +136,7 @@ const RootQuery = new GraphQLObjectType({
             }
         },
 
-        student: {
+        user: {
             type: UserType,
             args: {
                 id: {type: GraphQLID},
