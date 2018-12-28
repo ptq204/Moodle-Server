@@ -3,6 +3,7 @@ const express = require('express');
 const { ApolloServer, gql } = require('apollo-server-express');
 const mongoose = require('mongoose');
 const { applyMiddleware } = require('graphql-middleware');
+const authorization = require('./permissions/authorize');
 const getUser = require('./config/auth');
 const {DBURI, PORT} = require('./config/config');
 
@@ -17,9 +18,11 @@ app.get('/', (req, res) => {
     res.send('Moodle server')
 });
 
+const SchemaWithPermission = applyMiddleware(schema, authorization);
+
 const server = new ApolloServer({
     introspection: true,
-    schema,
+    schema: SchemaWithPermission,
     context: ({req}) => {
         const token = req.headers.authorization;
         const auth_token = token ? token.split(' ')[1] : '';

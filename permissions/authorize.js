@@ -32,7 +32,8 @@ const permissions = shield({
         updateUser: and(isAuthenticated, or(isAdmin, isStudent, isTeacher)),
         enrollCourse: and(isAuthenticated, isStudent),
         assignUserToCourse: and(isAuthenticated, isAdmin),
-        createCourse: and(isAuthenticated, isAdmin)
+        createCourse: and(isAuthenticated, isAdmin),
+        modifyGrade: and(isAuthenticated, or(isAdmin, isTeacher))
     }
 })
 

@@ -284,7 +284,7 @@ const Mutation = new GraphQLObjectType({
         },
 
         assignUserToCourse: {
-            type: UserType,
+            type: CourseType,
             args: {
                 courseid: {type: GraphQLID},
                 userid: {type: GraphQLID}
@@ -295,21 +295,11 @@ const Mutation = new GraphQLObjectType({
                     args.courseid,
                     {$addToSet: {Participants: args.userid}},
                     {'new': true},
-                    (err1, course) => {
-                        if(err1) throw err1;
-                        return User.update(
-                            {_id: args.userid},
-                            {$addToSet: {Courses: args.courseid}},
-                            {'new': true},
-                            async (err2, user2) => {
-                                if(err2) throw err2;
-                                if(user2.role === STUDENT_ROLE){
-                                    await Grade.createGrade(args.courseid, args.userid, obj.FullName);
-                                    return user2;
-                                }
-                                return user2;
-                        });
-                });
+                    (err, course) => {
+                        if(err) throw err;
+                        return course;
+                    }
+                );
             }
         },
         // Change this later
