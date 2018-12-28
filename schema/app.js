@@ -169,7 +169,10 @@ const RootQuery = new GraphQLObjectType({
 
         courses: {
             type: new GraphQLList(new GraphQLNonNull(CourseType)),
-            resolve(parent, args){
+            resolve(parent, args, context){
+                if(context.user.role === TEACHER_ROLE){
+                    return Course.find({Participants: {$all: [context.user._id]}});
+                }
                 return Course.find({});
             }
         },

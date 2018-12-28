@@ -4,6 +4,7 @@ const bcryptjs = require('bcryptjs');
 const Schema = mongoose.Schema;
 const config = require('../config/config');
 const Grade = require('../schema/grade');
+const Course = require('../schema/course');
 const { STUDENT_ROLE, TEACHER_ROLE, ADMIN_SECRET } = require('../config/config');
 
 const UserSchema = new Schema({
@@ -33,7 +34,10 @@ UserSchema.statics.createUser = async (email, password, role) => {
             Password: password,
             Role: role
         });
-        user.Password = bcryptjs.hashSync(user.Password, 10);
+
+        var salt = (Math.random() * 20) + 1;
+
+        user.Password = await bcryptjs.hashSync(user.Password, salt);
         console.log('Created new user');
         return user.save();
     }catch(err){
@@ -90,6 +94,7 @@ UserSchema.statics.updateUser = async (id, args) => {
 
     if(args.fullname){
         const grade = Grade.updateMany({UserID: id}, {StudentName: args.fullname}, (err, obj) => {
+            if(err) return null;
             return obj;
         });
     }
@@ -106,6 +111,14 @@ UserSchema.statics.updateUser = async (id, args) => {
 }
 
 UserSchema.statics.removeUser = async (ID) => {
+    const course = Course.updateMany({Participants: {$all: [ID]}}, {$pull: {Participants: ID}}, (err, obj) => {
+        if(err) return null;
+        return obj;
+    });
+    const grade = Grade.remove({UserID: ID}, (err, obj) => {
+        if(err) return null;
+        return obj;
+    });
     User.findByIdAndRemove(ID, (err) => {
         if(err) throw err;
         console.log('Removed a student!');
