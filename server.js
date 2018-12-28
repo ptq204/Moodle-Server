@@ -18,11 +18,11 @@ app.get('/', (req, res) => {
     res.send('Moodle server')
 });
 
-const SchemaWithPermission = applyMiddleware(schema, authorization);
+//const SchemaWithPermission = applyMiddleware(schema, authorization);
 
 const server = new ApolloServer({
     introspection: true,
-    schema: SchemaWithPermission,
+    schema,
     context: ({req}) => {
         const token = req.headers.authorization;
         const auth_token = token ? token.split(' ')[1] : '';
