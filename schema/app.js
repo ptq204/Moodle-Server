@@ -138,7 +138,7 @@ const RootQuery = new GraphQLObjectType({
         user: {
             type: UserType,
             args: {
-                id: {type: GraphQLID},
+                id: {type: new GraphQLNonNull(GraphQLID)},
             },
             resolve(parent, args){
                 return User.findById(args.id);
@@ -155,7 +155,7 @@ const RootQuery = new GraphQLObjectType({
         viewParticipants: {
             type: new GraphQLList(new GraphQLNonNull(UserType)),
             args: {
-                courseid: {type: GraphQLID}
+                courseid: {type: new GraphQLNonNull(GraphQLID)}
             },
             resolve(parent, args, context){
 
@@ -180,7 +180,7 @@ const RootQuery = new GraphQLObjectType({
         course: {
             type: CourseType,
             args: {
-                courseid: {type: GraphQLID}
+                courseid: {type: new GraphQLNonNull(GraphQLID)}
             },
             resolve(parent, args){
                 return Course.findById(args.courseid);
@@ -244,7 +244,7 @@ const Mutation = new GraphQLObjectType({
         removeUser: {
             type: UserType,
             args: {
-                id: {type: GraphQLID}
+                id: {type: new GraphQLNonNull(GraphQLID)}
             },
             resolve(parent, args, context){
                 return User.removeUser(args.id);
@@ -255,7 +255,7 @@ const Mutation = new GraphQLObjectType({
         enrollCourse: {
             type: UserType,
             args: {
-                courseid: {type: GraphQLID}
+                courseid: {type: new GraphQLNonNull(GraphQLID)}
             },
             resolve(parent, args, context){
                 
@@ -266,40 +266,53 @@ const Mutation = new GraphQLObjectType({
                     });
                 }
                 return Course.findByIdAndUpdate(
-                    args.courseid,
-                    {$addToSet: {Participants: context.user._id}},
-                    {'new': true},
-                    (err1, course) => {
-                        if(err1) throw err1;
-                        return User.update(
-                            {_id: context.user._id},
-                            {$addToSet: {Courses: args.courseid}},
-                            {'new': true},
-                            (err2, user2) => {
-                                if(err2) throw err2;
-                                return user2;
-                        });
+									args.courseid,
+									{$addToSet: {Participants: context.user._id}},
+									{'new': true},
+									(err1, course) => {
+										if(err1) throw err1;
+										return User.update(
+											{_id: context.user._id},
+											{$addToSet: {Courses: args.courseid}},
+											{'new': true},
+											(err2, user2) => {
+												if(err2) throw err2;
+												return user2;
+										});
                 });
             }
         },
 
         assignUserToCourse: {
-            type: CourseType,
+            type: UserType,
             args: {
-                courseid: {type: GraphQLID},
-                userid: {type: GraphQLID}
+                courseid: {type: new GraphQLNonNull(GraphQLID)},
+                userid: {type: new GraphQLNonNull(GraphQLID)}
             },
             resolve(parent, args, context){
-                                
-                return Course.findByIdAndUpdate(
-                    args.courseid,
-                    {$addToSet: {Participants: args.userid}},
-                    {'new': true},
-                    (err, course) => {
-                        if(err) throw err;
-                        return course;
-                    }
-                );
+								
+							if(context.user.role === config.ADMIN_SECRET){
+								return Course.findByIdAndUpdate(
+									args.courseid,
+									{$addToSet: {Participants: args.userid}},
+									{'new': true},
+									(err, course) => {
+										if(err) throw err;
+										console.log(`Added user to course`);
+										return User.update(
+											{_id: args.userid},
+											{$addToSet: {Courses: args.courseid}},
+											{'new': true},
+											(err2, user) => {
+												if(err2) throw err2;
+												console.log(`Added course to user course list`);
+												return user;
+											}
+										);
+									}
+								);
+							}
+							return null;
             }
         },
         // Change this later
@@ -346,10 +359,10 @@ const Mutation = new GraphQLObjectType({
         createCourse: {
             type: CourseType,
             args: {
-                code: {type: GraphQLString}, 
-                name: {type: GraphQLString}, 
-                year: {type: GraphQLInt},
-                semester: {type: GraphQLInt}
+                code: {type: new GraphQLNonNull(GraphQLString)}, 
+                name: {type: new GraphQLNonNull(GraphQLString)}, 
+                year: {type: new GraphQLNonNull(GraphQLInt)},
+                semester: {type: new GraphQLNonNull(GraphQLInt)}
             },
             resolve(parent, args){
                 return Course.createCourse(args.code, args.name, args.year, args.semester);

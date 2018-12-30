@@ -17,7 +17,7 @@ const UserSchema = new Schema({
     Description: String,
     Role: String,
     Password: String,
-    Courses: [Schema.Types.ObjectId]
+    Courses: [String]
 });
 
 UserSchema.statics.createUser = async (email, password, role) => {
