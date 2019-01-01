@@ -266,19 +266,19 @@ const Mutation = new GraphQLObjectType({
                     });
                 }
                 return Course.findByIdAndUpdate(
-									args.courseid,
-									{$addToSet: {Participants: context.user._id}},
-									{'new': true},
-									(err1, course) => {
-										if(err1) throw err1;
-										return User.update(
-											{_id: context.user._id},
-											{$addToSet: {Courses: args.courseid}},
-											{'new': true},
-											(err2, user2) => {
-												if(err2) throw err2;
-												return user2;
-										});
+                    args.courseid,
+                    {$addToSet: {Participants: context.user._id}},
+                    {'new': true},
+                    (err1, course) => {
+                        if(err1) throw err1;
+                        return User.update(
+                            {_id: context.user._id},
+                            {$addToSet: {Courses: args.courseid}},
+                            {'new': true},
+                            (err2, user2) => {
+                                if(err2) throw err2;
+                                return user2;
+                        });
                 });
             }
         },
@@ -291,28 +291,28 @@ const Mutation = new GraphQLObjectType({
             },
             resolve(parent, args, context){
 								
-							if(context.user.role === config.ADMIN_SECRET){
-								return Course.findByIdAndUpdate(
-									args.courseid,
-									{$addToSet: {Participants: args.userid}},
-									{'new': true},
-									(err, course) => {
-										if(err) throw err;
-										console.log(`Added user to course`);
-										return User.update(
-											{_id: args.userid},
-											{$addToSet: {Courses: args.courseid}},
-											{'new': true},
-											(err2, user) => {
-												if(err2) throw err2;
-												console.log(`Added course to user course list`);
-												return user;
-											}
-										);
-									}
-								);
-							}
-							return null;
+                if(context.user.role === config.ADMIN_SECRET){
+                    return Course.findByIdAndUpdate(
+                        args.courseid,
+                        {$addToSet: {Participants: args.userid}},
+                        {'new': true},
+                        (err, course) => {
+                            if(err) throw err;
+                            console.log(`Added user to course`);
+                            return User.update(
+                                {_id: args.userid},
+                                {$addToSet: {Courses: args.courseid}},
+                                {'new': true},
+                                (err2, user) => {
+                                    if(err2) throw err2;
+                                    console.log(`Added course to user course list`);
+                                    return user;
+                                }
+                            );
+                        }
+                    );
+                }
+                return null;
             }
         },
         // Change this later
