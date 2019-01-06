@@ -4,28 +4,23 @@ const Course = require('../schema/course');
 const { ADMIN_SECRET } = require('../config/config');
 
 const GradeSchema = new Schema({
-    UserID: String,
-    StudentName: String,
-    StudentID: String,
     CourseID: String,
-    Assignment: {type: Number, default: 0},
-    Midterm: {type: Number, default: 0},
-    Final: {type: Number, default: 0},
+    Weight: Number,
+    Max: Number,
+    GradeItemName: String
 });
 
-GradeSchema.statics.createGrade = async (courseid, userid, name, studentid) => {
+GradeSchema.statics.createGrade = async (courseid, gradename, weight, max) => {
 
     try{
-
-        const grade = await new Grade({UserID: userid, CourseID: courseid, StudentName: name, StudentID: studentid});
-        grade.save();
-
+        const grade = await new Grade({CourseID: courseid, GradeItemName: gradename, Weight: weight, Max: max});
+        return grade.save();
     }catch(err){
         throw err;
     }
 }
 
-GradeSchema.statics.modifyGrade = async (args, modifiers) => {
+GradeSchema.statics.modifyGradeInfo = async (args, modifiers) => {
 
     try{
         const course = await Course.findById(args.courseid);
@@ -39,18 +34,17 @@ GradeSchema.statics.modifyGrade = async (args, modifiers) => {
 
                 var objUpdate = {};
 
-                if(args.assignment) objUpdate.Assignment = args.assignment;
-                if(args.midterm) objUpdate.Midterm = args.midterm;
-                if(args.final) objUpdate.Final = args.final;
+                if(args.gradename) objUpdate.GradeItemName = args.gradename;
+                if(args.weight) objUpdate.Weight = args.weight;
+								if(args.max) objUpdate.Max = args.max;
 
                 return Grade.findOneAndUpdate(
                     {
-                        CourseID: args.courseid,
-                        UserID: args.userid
+                        _id: args.gradeid,
                     },
                     objUpdate, {'new': true}, (err, obj) => {
                     if(err){
-                        console.log('Cannot find userid/course to update');
+                        console.log('Cannot find this grade to update');
                         return null;
                     }
                     else{
@@ -72,9 +66,9 @@ GradeSchema.statics.modifyGrade = async (args, modifiers) => {
 
 GradeSchema.statics.removeGrade = async (courseid, userid) => {
     
-    Grade.findOneAndRemove({CourseID: courseid, UserID: userid}, (err)=>{
+    Grade.findOneAndRemove({CourseID: courseid}, (err)=>{
         if(err) throw err;
-        console.log('Removed student grade!');
+        console.log('Removed this grade!');
     });
 }
 

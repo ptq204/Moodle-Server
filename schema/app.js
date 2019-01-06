@@ -1,11 +1,14 @@
 const graphql = require('graphql');
 const graphql_iso_date = require('graphql-iso-date');
+const GraphQLJSON = require('graphql-type-json');
 const Course = require('../schema/course');
 const Student = require('../schema/student');
 const Teacher = require('../schema/teacher');
 const User = require('../schema/user');
 const Grade = require('../schema/grade');
+const GradeItem = require('../schema/gradeItem');
 const config = require('../config/config');
+
 
 const {
     GraphQLObjectType,
@@ -17,6 +20,7 @@ const {
     GraphQLInt,
     GraphQLSchema,
     GraphQLEnumType,
+    GraphQLUnionType
 } = graphql
 
 const { GraphQLDate } = graphql_iso_date
@@ -56,15 +60,57 @@ const UserType = new GraphQLObjectType({
 const GradeType = new GraphQLObjectType({
     name: 'Grade',
     fields: () => ({
-        UserID: {type: GraphQLString},
+        id: {type: GraphQLID},
         CourseID: {type: GraphQLString},
-        StudentName: {type: GraphQLString},
-        StudentID: {type: GraphQLString},
-        Assignment: {type: GraphQLFloat},
-        Midterm: {type: GraphQLFloat},
-        Final: {type: GraphQLFloat}
+        Weight: {type: GraphQLFloat},
+        GradeList: {
+            type: new GraphQLList(new GraphQLNonNull(GradeItemType)),
+            resolve(parent, args, context){
+                if(context.user.role === config.STUDENT_ROLE){
+                    return GradeItem.find({GradeID: parent.id, UserID: context.user._id});
+                }
+                else{
+                    return GradeItem.find({GradeID: parent.id});
+                }
+            }
+        },
+        Max: {type: GraphQLFloat},
+        GradeItemName: {type: GraphQLString},
+        
     })
 });
+
+const GradeItemType = new GraphQLObjectType({
+    name: 'GradeItem',
+    fields: () => ({
+        GradeID: {type: GraphQLString},
+        StudentID: {type: GraphQLString},
+        Grade: {type: GraphQLFloat},
+        StudentName: {type: GraphQLString},
+        Percentage: {
+            type: GraphQLFloat,
+            resolve(parent, args, context) {
+                return Grade.findOne({_id: parent.GradeID}).then((obj)=>{
+                    return (parent.Grade * 100.0 * obj.Weight)/(obj.Max);
+                });
+            }
+        },
+        Feedback: {type: GraphQLString},
+    })
+});
+
+const GradeReturnType = new GraphQLList(new GraphQLUnionType({
+	name: 'GradeReturn',
+	types: [GradeType, GradeItemType],
+	resolveType(value){
+		if(value instanceof Grade){
+			return GradeType;
+		}
+		if(value instanceof GradeItem){
+			return GradeItem;
+		}
+	}
+}));
 
 const CourseType = new GraphQLObjectType({
     name: 'Course',
@@ -78,19 +124,7 @@ const CourseType = new GraphQLObjectType({
         Grades:{
             type: new GraphQLList(new GraphQLNonNull(GradeType)),
             resolve(parent, args, context){
-                if(context.user.role === config.STUDENT_ROLE){
-                    return Grade.find(
-                        {
-                            UserID: context.user._id,
-                            CourseID: parent.id
-                        }, (err, obj) => {
-                            if(err) return null;
-                            return obj;
-                        });
-                }
-                else if(context.user.role === config.TEACHER_ROLE || context.user.role === config.ADMIN_SECRET){
-                    return Grade.find({CourseID: parent.id});
-                }
+				return Grade.find({CourseID: parent.id});
             }
         },
         
@@ -258,13 +292,7 @@ const Mutation = new GraphQLObjectType({
                 courseid: {type: new GraphQLNonNull(GraphQLID)}
             },
             resolve(parent, args, context){
-                
-                if(context.user.role === config.STUDENT_ROLE){
-                    const user = User.findById(context.user._id, (err, obj) => {
-                        if(err) return null;
-                        Grade.createGrade(args.courseid, context.user._id, obj.FullName, obj.UserID);
-                    });
-                }
+
                 return Course.findByIdAndUpdate(
                     args.courseid,
                     {$addToSet: {Participants: context.user._id}},
@@ -342,17 +370,60 @@ const Mutation = new GraphQLObjectType({
             }
         },
 
-        modifyGrade: {
+        addGrade: {
             type: GradeType,
             args: {
-                userid: {type: new GraphQLNonNull(GraphQLString)},
                 courseid: {type: new GraphQLNonNull(GraphQLString)},
-                assignment: {type: GraphQLFloat},
-                midterm: {type: GraphQLFloat},
-                final: {type: GraphQLFloat}
+                gradename: {type: new GraphQLNonNull(GraphQLString)},
+                weight: {type: new GraphQLNonNull(GraphQLFloat)},
+                max: {type: new GraphQLNonNull(GraphQLFloat)},
+						},
+						resolve(parent, args, context){
+							return Grade.createGrade(args.courseid, args.gradename, args.weight, args.max);
+						}
+				},
+				
+        modifyGradeInfo: {
+            type: GradeType,
+            args: {
+                courseid: {type: new GraphQLNonNull(GraphQLString)},
+                gradeid: {type: new GraphQLNonNull(GraphQLString)},
+                gradename: {type: GraphQLString},
+                weight: {type: GraphQLFloat},
+                max: {type: GraphQLFloat},
             },
             resolve(parent, args, context){
-                return Grade.modifyGrade(args, context.user);
+                return Grade.modifyGradeInfo(args, context.user);
+            }
+        },
+
+        importStudentGrade: {
+            type: GradeItemType,
+            args: {
+                gradeid: {type: new GraphQLNonNull(GraphQLString)},
+                studentid: {type: new GraphQLNonNull(GraphQLString)},
+                studentname: {type: GraphQLString},
+                grade: {type: new GraphQLNonNull(GraphQLFloat)},
+                feedback: {type: GraphQLString}
+            },
+            resolve(parent, args, context){
+                return GradeItem.createGradeItem(args);
+            }
+        },
+
+        modifyStudentGrade: {
+            type: GradeItemType,
+            args: {
+                gradeid: {type: new GraphQLNonNull(GraphQLString)},
+                studentid: {type: new GraphQLNonNull(GraphQLString)},
+                courseid: {type: new GraphQLNonNull(GraphQLString)},
+                studentname: {type: GraphQLString},
+                newstudentid: {type: GraphQLString},
+                grade: {type: GraphQLFloat},
+                feedback: {type: GraphQLString}
+            },
+            resolve(parent, args, context){
+                return GradeItem.modifyStudentGrade(args, context.user);
             }
         },
 
@@ -376,61 +447,3 @@ module.exports = new GraphQLSchema({
     mutation: Mutation
 });
 
-/*const StudentType = new GraphQLObjectType({
-    name: 'Student',
-    fields: () => ({
-        ID: {type: GraphQLID},
-        Class: {type: GraphQLString},
-        FirstName: {type: GraphQLString},
-        SurName: {type: GraphQLString},
-        BirthDay: {type: GraphQLDate},
-        Email: {type: GraphQLString},
-        City: {type: GraphQLString},
-        Country: {type: GraphQLString},
-        Description: {type: GraphQLString},
-        Role: {type:  GraphQLString},
-        Courses: {
-            type: new GraphQLList(new GraphQLNonNull(CourseType)),
-            resolve(parent, args){
-                const courses = Course.find({});
-                var arr_courses = [];
-                for(let i = 0; i < courses.length; i++){
-                    const learners = courses[i].Learners;
-                    for(let j = 0; j < learners.length; j++){
-                        if(learners[i].ID === parent.ID){
-                            arr_courses.push(courses[i]);
-                            break;
-                        }
-                    }
-                }
-                return arr_courses;
-            }
-        }
-    })
-});
-
-const TeacherType = new GraphQLObjectType({
-    name: 'Teacher',
-    fields: () => ({
-        ID: {type: GraphQLID},
-        FirstName: {type: GraphQLString},
-        SurName: {type: GraphQLString},
-        Email: {type: GraphQLString},
-        Role: {type: GraphQLString},
-        Courses: {
-            type: new GraphQLList(new GraphQLNonNull(CourseType)),
-            resolve(parent, args){
-                const courses = Course.find({});
-                var arr_courses = [];
-                for(let i = 0; i < courses.length; i++){
-                    const lecturer = courses[i].Lecturer;
-                    if(lecturer.ID === parent.ID){
-                        arr_courses.push(courses[i]);
-                        break;
-                    }
-                }
-                return arr_courses;
-            }
-        }
-    })
-});*/
