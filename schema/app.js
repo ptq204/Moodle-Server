@@ -20,7 +20,8 @@ const {
     GraphQLInt,
     GraphQLSchema,
     GraphQLEnumType,
-    GraphQLUnionType
+    GraphQLUnionType,
+    GraphQLBoolean,
 } = graphql
 
 const { GraphQLDate } = graphql_iso_date
@@ -218,6 +219,16 @@ const RootQuery = new GraphQLObjectType({
             },
             resolve(parent, args){
                 return Course.findById(args.courseid);
+            }
+        },
+
+        grade: {
+            type: GradeType,
+            args: {
+                gradeid: {type: new GraphQLNonNull(GraphQLString)}
+            },
+            resolve(parent, args){
+                return Grade.findById(args.gradeid);
             }
         }
     }
@@ -438,7 +449,7 @@ const Mutation = new GraphQLObjectType({
             resolve(parent, args){
                 return Course.createCourse(args.code, args.name, args.year, args.semester);
             }
-        }
+        },
     }
 });
 

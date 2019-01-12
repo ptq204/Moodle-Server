@@ -1,5 +1,7 @@
 const schema = require('./schema/app');
 const express = require('express');
+const multer = require('multer');
+const bodyParser = require('body-parser');
 const { ApolloServer, gql } = require('apollo-server-express');
 const mongoose = require('mongoose');
 const { applyMiddleware } = require('graphql-middleware');
@@ -13,9 +15,48 @@ mongoose.connection.once('open', () => {
 });
 
 const app = express();
+app.use(express.static('uploads'));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({extended: false}));
+
+app.use(function(req, res, next){
+    res.header('Access-Control-Allow-Origin', "*"); //My frontend APP domain
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Access-Control-Allow-Origin, enctype');
+    next();
+});
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, `./uploads/profile/`);
+    },
+    filename: (req, file, cb) => {
+        cb(null, `${req.body.UserID + '.' + file.originalname.split('.')[1]}`);
+    }
+});
+
+const fileFilter = (req, file, cb) => {
+    if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png'){
+        cb(null, true);
+    }
+    else{
+        cb(null, false);
+    }
+}
+
+const upload = multer({
+    storage: storage,
+    fileFilter: fileFilter
+});
 
 app.get('/', (req, res) => {
     res.send('Moodle server')
+});
+
+app.post('/upload', upload.single('userProfileImage'), (req, res) => {
+    console.log(req.file);
+    
+    res.send(req.file.path);
 });
 
 const SchemaWithPermission = applyMiddleware(schema, authorization);
