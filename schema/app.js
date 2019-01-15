@@ -413,7 +413,7 @@ const Mutation = new GraphQLObjectType({
             args: {
                 gradeid: {type: new GraphQLNonNull(GraphQLString)},
                 studentid: {type: new GraphQLNonNull(GraphQLString)},
-                studentname: {type: GraphQLString},
+                studentname: {type: new GraphQLNonNull(GraphQLString)},
                 grade: {type: new GraphQLNonNull(GraphQLFloat)},
                 feedback: {type: GraphQLString}
             },
