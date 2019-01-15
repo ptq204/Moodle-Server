@@ -19,12 +19,12 @@ app.use(express.static('uploads'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
 
-app.use(function(req, res, next){
+/*app.use(function(req, res, next){
     res.header('Access-Control-Allow-Origin', "*"); //My frontend APP domain
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Access-Control-Allow-Origin, enctype');
     next();
-});
+});*/
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -53,7 +53,7 @@ app.get('/', (req, res) => {
     res.send('Moodle server')
 });
 
-app.post('/upload', upload.single('userProfileImage'), (req, res) => {
+app.post('/upload', upload.single('UserProfileImage'), (req, res) => {
     console.log(req.file);
     
     res.send(req.file.path);
