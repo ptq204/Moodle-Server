@@ -19,12 +19,12 @@ app.use(express.static('uploads'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
 
-/*app.use(function(req, res, next){
+app.use(function(req, res, next){
     res.header('Access-Control-Allow-Origin', "*"); //My frontend APP domain
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Access-Control-Allow-Origin, enctype');
     next();
-});*/
+});
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
