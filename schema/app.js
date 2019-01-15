@@ -68,7 +68,7 @@ const GradeType = new GraphQLObjectType({
             type: new GraphQLList(new GraphQLNonNull(GradeItemType)),
             resolve(parent, args, context){
                 if(context.user.role === config.STUDENT_ROLE){
-                    return GradeItem.find({GradeID: parent.id, UserID: context.user._id});
+                    return GradeItem.find({GradeID: parent.id, StudentID: context.user.userid});
                 }
                 else{
                     return GradeItem.find({GradeID: parent.id});
