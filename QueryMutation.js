@@ -1,115 +1,105 @@
 // Login
-mutation{
-    login(email: "dbtien@gmail.com", password:"123456")
-}
 
-// Create user - Admin does this
-mutation{
-    createUser(email:"dbtien@gmail.com", password: "123456"){
-      UserID
-      FirstName
-      SurName
-    }
-}
+const ADD_GRADE = gql`
+   mutation AddGrade(
+       $courseid: String!,
+       $gradename: String!,
+       $weight: Float!,
+       $max: Float!
+   ){
+       addGrade(
+           courseid: $courseid,
+           gradename: $gradename,
+           weight: $weight,
+           max: $max
+       ){
+           CourseID
+           GradeItemName
+           Weight
+           Max
+       }
+   }
+`;
 
-// Update user - Admin does this
-mutation{
-    updateUser(userid:"4561012", firstname:"Dinh Ba", surname:"Tien"){
-      UserID
-      FirstName
-      SurName
-    }
-}
+const IMPORT_STUDENT_GRADE = gql`
+   mutation ImportStudentGrade(
+       $gradeid: String!,
+       $studentid: String!,
+       $studentname: String,
+       $grade: Float!,
+       $feedback: String){
+           importStudentGrade(
+               gradeid: $gradeid,
+               studentid: $studentid,
+               studentname: $studentname,
+               grade: $grade,
+               feedback: $feedback
+               ){
+               StudentID
+               StudentName
+               Grade
+           }
+       }
+`
+const EDIT_GRADE = gql`
+   mutation EditGradeInfo(
+           $courseid: String!,
+           $gradeid: String!,
+           $gradename: String,
+           $weight: Float
+           $max: Float
+   ){
+       modifyGradeInfo(
+           courseid: $courseid
+           gradeid: $gradeid,
+           gradename: $gradename,
+           weight: $weight,
+           max: $max
+       ){
+           GradeItemName
+           Weight
+           Max
+       }
+   }
+`;
 
-// Students - Admin does this
-{
-    students{
-      id
-      UserID
-      FirstName
-      SurName
-      Email
-      Courses{
-        CourseCode
-        CourseName
-      }
-    }
-}
+const EDIT_STUDENT_GRADE = gql`
+   mutation EditStudentGrade(
+       $gradeid: String!,
+       $courseid: String!,
+       $studentid: String!,
+       $newstudentid: String,
+       $studentname: String,
+       $grade: Float,
+       $feedback: String
+       ){
+           modifyStudentGrade(
+               gradeid: $gradeid,
+               studentid: $studentid,
+               newstudentid: $newstudentid,
+               courseid: $courseid,
+               studentname: $studentname,
+               grade: $grade,
+               feedback: $feedback){
+                   StudentID
+                   StudentName
+                   Grade
+                   Feedback
+           }
+       }
+`;
 
-// List all course
-{
-    courses{
-      CourseCode
-      CourseName
-      Year
-      Semester
-      Participants{
-        UserID
-        FirstName
-        SurName
-        Email
-      }
-    }
-  }
-
-// Create new course (Teacher or Admin does this -> later)
-mutation{
-    createCourse(code:"CS300", name:"Software engineering", year:2018, semester:2){
-      id
-      CourseCode
-      CourseName
-      Year
-      Semester
-      Participants{
-        UserID
-        FirstName
-        SurName
-      }
-    }
-}
-
-// Enroll course
-mutation{
-    enrollCourse(coursecode:"CS300", year:2018, semester:2){
-      UserID
-      FirstName
-      SurName
-      Courses{
-        CourseCode
-        CourseName
-        Year
-        Semester
-      }
-    }
-}
-
-
-// Leave a course
-mutation{
-	leaveCourse(coursecode:"CS300", year:2018, semester: 2){
-		UserID
-    FirstName
-    SurName
-  }
-}
-
-
-// View participants of a course
-{
-    viewParticipants(course_code:"CS320", year:2018, semester:1){
-      UserID
-      FirstName
-      SurName
-      Email
-    }
-}
-
-// Modify score - Teacher | Admin does this
-mutation{
-    modifyGrade(userid:"1651022", coursecode: "CS300", year:2018, semester:2, assignment:10){
-      CourseCode
-      Assignment
-      Midterm
-      Final
-    }
-}
+const GRADE = gql`
+   query Grade($gradeid: String!){
+       grade(gradeid: $gradeid){
+           GradeItemName
+           GradeList{
+               StudentID
+               StudentName
+               Grade
+               Feedback
+               Percentage
+           }
+       }
+   }
+`;
