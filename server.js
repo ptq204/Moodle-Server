@@ -31,22 +31,21 @@ const storage = multer.diskStorage({
         cb(null, `./uploads/profile/`);
     },
     filename: (req, file, cb) => {
-        cb(null, `${req.body.UserID + '.' + file.originalname.split('.')[1]}`);
+        cb(null, `${req.body.UserID + '.' + file.mimetype.split('/')[1]}`);
     }
 });
 
-const fileFilter = (req, file, cb) => {
+/*const fileFilter = (req, file, cb) => {
     if(file.mimetype === 'image/jpeg' || file.mimetype === 'image/png'){
         cb(null, true);
     }
     else{
         cb(null, false);
     }
-}
+}*/
 
 const upload = multer({
     storage: storage,
-    fileFilter: fileFilter
 });
 
 app.get('/', (req, res) => {

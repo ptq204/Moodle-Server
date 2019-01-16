@@ -129,7 +129,7 @@ const CourseType = new GraphQLObjectType({
             }
         },
         
-        Teacher: {
+        Teachers: {
             type: new GraphQLList(new GraphQLNonNull(UserType)),
             resolve(parent, args){
                 return User.find(
