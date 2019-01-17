@@ -133,14 +133,14 @@ const CourseType = new GraphQLObjectType({
             type: new GraphQLList(new GraphQLNonNull(UserType)),
             resolve(parent, args){
                 return User.find(
-                    {Role: config.TEACHER_ROLE, Courses: {$all: [parent.CourseCode]}},
+                    {Role: config.TEACHER_ROLE, Courses: {$all: [parent.id]}},
                 );
             }
         },
         Learners: {
             type: new GraphQLList(new GraphQLNonNull(UserType)),
             resolve(parent, args){
-                return User.find({Role: config.STUDENT_ROLE, Courses: {$all: [parent.CourseCode]}});
+                return User.find({Role: config.STUDENT_ROLE, Courses: {$all: [parent.id]}});
             }
         },
         Participants: {
