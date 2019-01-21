@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+const ObjectId = mongoose.Types.ObjectId;
 const graphql = require('graphql');
 const graphql_iso_date = require('graphql-iso-date');
 const GraphQLJSON = require('graphql-type-json');
@@ -22,6 +24,7 @@ const {
     GraphQLEnumType,
     GraphQLUnionType,
     GraphQLBoolean,
+    GraphQLInputObjectType
 } = graphql
 
 const { GraphQLDate } = graphql_iso_date
@@ -54,7 +57,7 @@ const UserType = new GraphQLObjectType({
             resolve(parent, args){
                 return Course.find({Participants: {$all: [parent.id]}});
             }
-        }
+        },
     })
 });
 
@@ -71,7 +74,7 @@ const GradeType = new GraphQLObjectType({
                     return GradeItem.find({GradeID: parent.id, StudentID: context.user.userid});
                 }
                 else{
-                    return GradeItem.find({GradeID: parent.id});
+                    return User.find({})
                 }
             }
         },
@@ -81,13 +84,31 @@ const GradeType = new GraphQLObjectType({
     })
 });
 
+
 const GradeItemType = new GraphQLObjectType({
     name: 'GradeItem',
     fields: () => ({
+        UserID: {type: GraphQLString},
+        StudentID: {
+            type: GraphQLString,
+            resolve(parent, args, context){
+                return User.findOne({UserID: parent.UserID}, (err, obj) => {
+                    if(err) throw err;
+                    return obj.UserID;
+                });
+            }
+        },
+        StudentName: {
+            type: GraphQLString,
+            resolve(parent, args, context){
+                return User.findOne({UserID: parent.UserID}, (err, obj) => {
+                    if(err) throw err;
+                    return obj.FullName;
+                });
+            }
+        },
         GradeID: {type: GraphQLString},
-        StudentID: {type: GraphQLString},
         Grade: {type: GraphQLFloat},
-        StudentName: {type: GraphQLString},
         Percentage: {
             type: GraphQLFloat,
             resolve(parent, args, context) {
@@ -302,14 +323,30 @@ const Mutation = new GraphQLObjectType({
             args: {
                 courseid: {type: new GraphQLNonNull(GraphQLID)}
             },
-            resolve(parent, args, context){
+            resolve: async (parent, args, context) => {
 
                 return Course.findByIdAndUpdate(
                     args.courseid,
                     {$addToSet: {Participants: context.user._id}},
                     {'new': true},
-                    (err1, course) => {
+                    async (err1, course) => {
                         if(err1) throw err1;
+                        const grades = await Grade.find({CourseID: args.courseid});
+                        for(let i = 0; i < grades.length; i++){
+                            Grade.update({_id: grades[i]._id}, {$push: {GradeList: [
+                                {
+                                    UserID: context.user._id,
+                                    StudentID: context.user.userid,
+                                    GradeID: grades[i]._id.toString(),
+                                    Grade: 0,
+                                    Feedback: '',
+                                    Percentage: 0
+                                }
+                            ]}},{'new': true}, (err, obj) => {
+                                if(err) throw err;
+                                return obj;
+                            });
+                        }
                         return User.update(
                             {_id: context.user._id},
                             {$addToSet: {Courses: args.courseid}},
@@ -388,11 +425,32 @@ const Mutation = new GraphQLObjectType({
                 gradename: {type: new GraphQLNonNull(GraphQLString)},
                 weight: {type: new GraphQLNonNull(GraphQLFloat)},
                 max: {type: new GraphQLNonNull(GraphQLFloat)},
-						},
-						resolve(parent, args, context){
-							return Grade.createGrade(args.courseid, args.gradename, args.weight, args.max);
-						}
-				},
+			},
+            resolve: async (parent, args, context) => {
+                return Grade.createGrade(args.courseid, args.gradename, args.weight, args.max).then(async (grade) => {
+                    const users = await User.find({Role: config.STUDENT_ROLE,Courses: {$all: [args.courseid]}});
+                    for(let i = 0; i < users.length; i++){
+                        console.log('Auto add grade of student');
+                        console.log(grade._id);
+                        Grade.updateOne({_id: new ObjectId(grade._id)}, {$push: {GradeList:
+                            {
+                                UserID: users[i]._id.toString(),
+                                StudentName: users[i].FullName,
+                                StudentID: users[i].UserID,
+                                GradeID: grade._id.toString(),
+                                Grade: 0,
+                                Feedback: '',
+                                Percentage: 0
+                            }
+                        }},{'new': true}, (err, obj) => {
+                            if(err) throw err;
+                            return obj;
+                        });
+                    }
+                    return grade;
+                });
+            }
+	    },
 				
         modifyGradeInfo: {
             type: GradeType,

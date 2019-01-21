@@ -17,7 +17,8 @@ const UserSchema = new Schema({
     Description: String,
     Role: String,
     Password: String,
-    Courses: [String]
+    Courses: [String],
+    Grades: [String]
 });
 
 UserSchema.statics.createUser = async (email, password, role) => {

@@ -7,7 +7,8 @@ const GradeSchema = new Schema({
     CourseID: String,
     Weight: Number,
     Max: Number,
-    GradeItemName: String
+    GradeItemName: String,
+    GradeList: [{}]
 });
 
 GradeSchema.statics.createGrade = async (courseid, gradename, weight, max) => {
