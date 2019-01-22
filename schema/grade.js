@@ -7,7 +7,8 @@ const GradeSchema = new Schema({
     CourseID: String,
     Weight: Number,
     Max: Number,
-    GradeItemName: String
+    GradeItemName: String,
+    GradeList: [{}]
 });
 
 GradeSchema.statics.createGrade = async (courseid, gradename, weight, max) => {
@@ -61,6 +62,40 @@ GradeSchema.statics.modifyGradeInfo = async (args, modifiers) => {
    }catch(err){
         console.log(err);
         return null;
+    }
+}
+
+GradeSchema.statics.modifyStudentGrade = async (args, modifiers) => {
+
+    try{
+        const course = await Course.findById(args.courseid)
+        if(!course){
+          console.log('Cannot find course!');
+          return null;
+        }
+        else{
+            if(course.Participants.includes(modifiers._id) || modifiers.role === ADMIN_SECRET){
+
+                var objUpdate = {};
+                if(args.grade) objUpdate['GradeList.$.Grade'] = args.grade;
+                if(args.feedback) objUpdate['GradeList.$.Feedback'] = args.feedback;
+
+                Grade.updateOne(
+                    {_id: args.gradeid, 'GradeList.UserID': args.userid},
+                    {$set: objUpdate},
+                    {'new': true},
+                    (err, obj) => {
+                        if(err) throw err;
+                        return obj;
+                });
+            }
+            else{
+                console.log('This modifiers does not belong to this course!');
+            }
+        }
+        return null;
+    }catch(err){
+        throw err;
     }
 }
 

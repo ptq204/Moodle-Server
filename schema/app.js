@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+const ObjectId = mongoose.Types.ObjectId;
 const graphql = require('graphql');
 const graphql_iso_date = require('graphql-iso-date');
 const GraphQLJSON = require('graphql-type-json');
@@ -22,6 +24,7 @@ const {
     GraphQLEnumType,
     GraphQLUnionType,
     GraphQLBoolean,
+    GraphQLInputObjectType
 } = graphql
 
 const { GraphQLDate } = graphql_iso_date
@@ -54,7 +57,7 @@ const UserType = new GraphQLObjectType({
             resolve(parent, args){
                 return Course.find({Participants: {$all: [parent.id]}});
             }
-        }
+        },
     })
 });
 
@@ -64,17 +67,6 @@ const GradeType = new GraphQLObjectType({
         id: {type: GraphQLID},
         CourseID: {type: GraphQLString},
         Weight: {type: GraphQLFloat},
-        GradeList: {
-            type: new GraphQLList(new GraphQLNonNull(GradeItemType)),
-            resolve(parent, args, context){
-                if(context.user.role === config.STUDENT_ROLE){
-                    return GradeItem.find({GradeID: parent.id, StudentID: context.user.userid});
-                }
-                else{
-                    return GradeItem.find({GradeID: parent.id});
-                }
-            }
-        },
         Max: {type: GraphQLFloat},
         GradeItemName: {type: GraphQLString},
         
@@ -84,21 +76,24 @@ const GradeType = new GraphQLObjectType({
 const GradeItemType = new GraphQLObjectType({
     name: 'GradeItem',
     fields: () => ({
+        UserID: {type: GraphQLString},
         GradeID: {type: GraphQLString},
-        StudentID: {type: GraphQLString},
         Grade: {type: GraphQLFloat},
-        StudentName: {type: GraphQLString},
-        Percentage: {
-            type: GraphQLFloat,
-            resolve(parent, args, context) {
-                return Grade.findOne({_id: parent.GradeID}).then((obj)=>{
-                    return (parent.Grade * 100.0 * obj.Weight)/(obj.Max);
-                });
-            }
-        },
         Feedback: {type: GraphQLString},
     })
 });
+
+const UserGradeType = new GraphQLObjectType({
+    name: 'UserGradeType',
+    fields: () => ({
+        UserID: {type: GraphQLString},
+        GradeID: {type: GraphQLString},
+        StudentID: {type: GraphQLString},
+        StudentName: {type: GraphQLString},
+        Grade: {type: GraphQLFloat},
+        Feedback: {type: GraphQLString},
+    })
+})
 
 const GradeReturnType = new GraphQLList(new GraphQLUnionType({
 	name: 'GradeReturn',
@@ -230,6 +225,52 @@ const RootQuery = new GraphQLObjectType({
             resolve(parent, args){
                 return Grade.findById(args.gradeid);
             }
+        },
+
+        gradeList: {
+            type: new GraphQLList(UserGradeType),
+            args: {
+                gradeid: {type: new GraphQLNonNull(GraphQLString)},
+                courseid: {type: new GraphQLNonNull(GraphQLString)},
+            },
+            resolve: async(parent, args, context) => {
+
+                var gradeList = [];
+                var participants = null;
+
+                if(context.user.role === config.TEACHER_ROLE || context.user.role === config.ADMIN_SECRET){
+                    participants = await User.find({Role: config.STUDENT_ROLE, Courses: {$all: [args.courseid]}});
+                }
+                else if(context.user.role === config.STUDENT_ROLE){
+                    participants = await User.find({_id: context.user._id}, (err, obj) => {
+                        if(err) throw err;
+                        return obj;
+                    });
+                }
+
+                for(let i = 0; i < participants.length; i++){
+                    const gradeItem 
+                    = await GradeItem.findOne({
+                        GradeID: args.gradeid,
+                        UserID: participants[i]._id.toString()},
+                        (err, obj) => {
+                            if(err) throw err;
+                            return obj;
+                        });
+
+                    var userGrade = {
+                        UserID: participants[i]._id.toString(),
+                        GradeID: args.gradeid,
+                        StudentID: participants[i].UserID,
+                        StudentName: participants[i].FullName,
+                        Grade: gradeItem ? gradeItem.Grade : null,
+                        Feedback: gradeItem ? gradeItem.Feedback : '',
+                    }
+
+                    gradeList.push(userGrade);
+                }
+                return gradeList;
+            }
         }
     }
 });
@@ -302,14 +343,13 @@ const Mutation = new GraphQLObjectType({
             args: {
                 courseid: {type: new GraphQLNonNull(GraphQLID)}
             },
-            resolve(parent, args, context){
+            resolve: async (parent, args, context) => {
 
                 return Course.findByIdAndUpdate(
                     args.courseid,
                     {$addToSet: {Participants: context.user._id}},
                     {'new': true},
                     (err1, course) => {
-                        if(err1) throw err1;
                         return User.update(
                             {_id: context.user._id},
                             {$addToSet: {Courses: args.courseid}},
@@ -388,11 +428,11 @@ const Mutation = new GraphQLObjectType({
                 gradename: {type: new GraphQLNonNull(GraphQLString)},
                 weight: {type: new GraphQLNonNull(GraphQLFloat)},
                 max: {type: new GraphQLNonNull(GraphQLFloat)},
-						},
-						resolve(parent, args, context){
-							return Grade.createGrade(args.courseid, args.gradename, args.weight, args.max);
-						}
-				},
+			},
+            resolve: async (parent, args, context) => {
+                return Grade.createGrade(args.courseid, args.gradename, args.weight, args.max);
+            }
+	    },
 				
         modifyGradeInfo: {
             type: GradeType,
@@ -408,7 +448,7 @@ const Mutation = new GraphQLObjectType({
             }
         },
 
-        importStudentGrade: {
+        /*importStudentGrade: {
             type: GradeItemType,
             args: {
                 gradeid: {type: new GraphQLNonNull(GraphQLString)},
@@ -420,16 +460,14 @@ const Mutation = new GraphQLObjectType({
             resolve(parent, args, context){
                 return GradeItem.createGradeItem(args);
             }
-        },
+        },*/
 
         modifyStudentGrade: {
             type: GradeItemType,
             args: {
                 gradeid: {type: new GraphQLNonNull(GraphQLString)},
-                studentid: {type: new GraphQLNonNull(GraphQLString)},
                 courseid: {type: new GraphQLNonNull(GraphQLString)},
-                studentname: {type: GraphQLString},
-                newstudentid: {type: GraphQLString},
+                userid: {type: new GraphQLNonNull(GraphQLString)},
                 grade: {type: GraphQLFloat},
                 feedback: {type: GraphQLString}
             },
